@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{TITLE}}</title>
-<meta name="description" content="{{DESCRIPTION}}">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E{{EMOJI}}%3C/text%3E%3C/svg%3E">
+<title>Forum</title>
+<meta name="description" content="A 2004-style internal message board where signed-in staff post to fixed categories under a pseudonym.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💬%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
@@ -14,31 +14,136 @@
 <script src="design-system/components.js" defer></script>
 <style>
 /* Page-specific styling only — anything reusable belongs to the design system. */
-.stage { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6); }
+.stage { max-width: 940px; margin: 0 auto; padding: var(--space-6); }
 .stage h1 { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 var(--space-2); }
 .stage .lede { color: var(--text-muted); font-size: var(--text-base); margin: 0 0 var(--space-6); max-width: 62ch; }
+.notice { margin-bottom: var(--space-6); }
+.section-head { display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-3); }
+.section-head h2 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+.board-card { overflow: hidden; }
+.board-card .dtable th:first-child, .board-card .dtable td:first-child { padding-left: var(--space-5); }
+.board-card .dtable th:last-child, .board-card .dtable td:last-child { padding-right: var(--space-5); }
+.board-card .dtable tbody tr:last-child td { border-bottom: 0; }
+.board-card .dtable td { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+.notice p { margin: 0; font-size: var(--text-sm); color: var(--text-muted); }
+.forum-name { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); color: var(--text); text-decoration: none; letter-spacing: -0.015em; }
+.forum-name:hover { color: var(--accent); }
+.forum-blurb { font-size: var(--text-sm); color: var(--text-muted); margin-top: 2px; max-width: 60ch; }
+.lastpost { font-size: var(--text-sm); color: var(--text-muted); }
+.lastpost a { color: var(--text); text-decoration: none; font-weight: 600; }
+.lastpost a:hover { color: var(--accent); }
+.dtable td { vertical-align: top; }
+.dtable td.num { text-align: right; width: 90px; }
+.dtable th.num { text-align: right; }
+.footnote { margin-top: var(--space-6); font-size: var(--text-xs); color: var(--text-faint); }
 </style>
 </head>
 <body>
 
 <header class="topbar">
-  <a class="brand" href="./"><span class="brand-mark"></span><span>{{TITLE}}</span></a>
+  <a class="brand" href="./"><span class="brand-mark"></span><span>Forum</span></a>
+  <nav class="navtabs"><a href="./" aria-current="page">Board index</a></nav>
   <div style="margin-left:auto"></div>
+  <span id="authSlot"></span>
   <button class="btn btn--ghost btn--icon" data-theme-toggle aria-label="Toggle theme">◐</button>
 </header>
 
 <main class="stage">
-  <h1>{{TITLE}}</h1>
-  <p class="lede">{{DESCRIPTION}}</p>
+  <h1>Board index</h1>
+  <p class="lede">A message board in the manner of 2004: pick a handle, pick a category, say your piece. Reading is open to everyone here, posting needs an account.</p>
 
-  <div class="card card--pad">
-    <div class="empty">
-      <div class="empty-glyph">{{EMOJI}}</div>
-      <h4>Nothing here yet</h4>
-      <p>Replace this starter with the app itself. Keep the design system, drop the scaffolding.</p>
-    </div>
+  <div class="card card--pad notice">
+    <p><strong>This board is pseudonymous, not anonymous.</strong> Other readers see only the handle you type on a post. The database records which account wrote it, and an administrator can read that. You can delete your own posts, and nobody else can delete them for you.</p>
   </div>
+
+  <div class="section-head">
+    <h2>Categories</h2>
+    <span class="t-faint" style="font-size:var(--text-xs)">Three of them, and no more without a change to the spec</span>
+  </div>
+  <div class="card board-card">
+    <table class="dtable">
+      <thead>
+        <tr><th>Forum</th><th class="num">Topics</th><th class="num">Posts</th><th>Last post</th></tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="4" class="t-faint" style="padding:var(--space-5)">Loading the board…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="footnote">Seeded with invented threads by people who do not exist. Anything you post is real and stays until you remove it.</p>
 </main>
+
+<script src="pb-auth.js"></script>
+<script>
+function fmt(value) {
+  if (!value) return '—';
+  const d = new Date(String(value).replace(' ', 'T'));
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
+    ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function cell(text, className) {
+  const td = document.createElement('td');
+  if (className) td.className = className;
+  td.textContent = text;
+  return td;
+}
+
+async function load() {
+  const rows = document.getElementById('rows');
+  try {
+    const data = await PBAuth.api('/api/forum/board');
+    rows.innerHTML = '';
+    data.categories.forEach((cat) => {
+      const tr = document.createElement('tr');
+
+      const first = document.createElement('td');
+      const link = document.createElement('a');
+      link.className = 'forum-name';
+      link.href = 'category.html?c=' + encodeURIComponent(cat.slug);
+      link.textContent = cat.name;
+      const blurb = document.createElement('div');
+      blurb.className = 'forum-blurb';
+      blurb.textContent = cat.blurb || '';
+      first.appendChild(link);
+      first.appendChild(blurb);
+      tr.appendChild(first);
+
+      tr.appendChild(cell(String(cat.threads), 'num'));
+      tr.appendChild(cell(String(cat.posts), 'num'));
+
+      const last = document.createElement('td');
+      last.className = 'lastpost';
+      if (cat.latest) {
+        const tlink = document.createElement('a');
+        tlink.href = 'thread.html?t=' + encodeURIComponent(cat.latest.id);
+        tlink.textContent = cat.latest.title;
+        const meta = document.createElement('div');
+        meta.textContent = 'by ' + cat.latest.last_post_by + ' — ' + fmt(cat.latest.last_post_at);
+        last.appendChild(tlink);
+        last.appendChild(meta);
+      } else {
+        last.textContent = 'No posts yet';
+      }
+      tr.appendChild(last);
+      rows.appendChild(tr);
+    });
+  } catch (err) {
+    rows.innerHTML = '';
+    const tr = document.createElement('tr');
+    tr.appendChild(cell('Could not load the board: ' + err.message));
+    tr.firstChild.colSpan = 4;
+    rows.appendChild(tr);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  PBAuth.mountAuth(document.getElementById('authSlot'));
+  load();
+});
+</script>
 
 </body>
 </html>

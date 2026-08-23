@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Topic — Forum</title>
+<meta name="description" content="A topic on the forum, with its replies.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💬%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="design-system/tokens.css">
+<link rel="stylesheet" href="design-system/components.css">
+<script src="design-system/components.js" defer></script>
+<style>
+/* Page-specific styling only — anything reusable belongs to the design system. */
+.stage { max-width: 940px; margin: 0 auto; padding: var(--space-6); }
+.stage h1 { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 var(--space-2); }
+.crumbs { font-size: var(--text-sm); color: var(--text-faint); margin-bottom: var(--space-3); }
+.crumbs a { color: var(--text-muted); text-decoration: none; }
+.crumbs a:hover { color: var(--text); }
+.thread-meta { font-size: var(--text-sm); color: var(--text-muted); margin: 0 0 var(--space-6); }
+.post { display: grid; grid-template-columns: 170px 1fr; gap: var(--space-5); padding: var(--space-5); margin-bottom: var(--space-3); }
+.post .who { border-right: 1px solid var(--border); padding-right: var(--space-4); }
+.post .who .avatar { margin-bottom: var(--space-2); }
+.post .who .name { font-family: var(--font-display); font-weight: 600; font-size: var(--text-base); word-break: break-word; }
+.post .who .rank { font-size: var(--text-xs); color: var(--text-faint); margin-top: 2px; }
+.post .said { display: flex; flex-direction: column; }
+.post .said .head { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-xs); color: var(--text-faint); margin-bottom: var(--space-3); }
+.post .said .body { white-space: pre-wrap; font-size: var(--text-base); line-height: var(--leading-normal); color: var(--text); }
+.post .said .body.gone { color: var(--text-faint); font-style: italic; }
+.post .said .foot { margin-top: var(--space-4); }
+@media (max-width: 640px) {
+  .post { grid-template-columns: 1fr; }
+  .post .who { border-right: 0; border-bottom: 1px solid var(--border); padding-bottom: var(--space-3); }
+}
+.composer { margin-top: var(--space-6); }
+.composer .row { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.composer .row .field { flex: 1 1 220px; }
+.composer textarea { min-height: 130px; resize: vertical; font-family: var(--font-body); }
+.composer .actions { display: flex; align-items: center; gap: var(--space-3); }
+.warn-line { font-size: var(--text-xs); color: var(--text-faint); margin: var(--space-3) 0 0; }
+.error-line { font-size: var(--text-sm); color: var(--danger); margin: 0 0 var(--space-3); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="./"><span class="brand-mark"></span><span>Forum</span></a>
+  <nav class="navtabs"><a href="./">Board index</a></nav>
+  <div style="margin-left:auto"></div>
+  <span id="authSlot"></span>
+  <button class="btn btn--ghost btn--icon" data-theme-toggle aria-label="Toggle theme">◐</button>
+</header>
+
+<main class="stage">
+  <div class="crumbs"><a href="./">Board index</a> » <a id="crumbCat" href="./">Category</a> » <span id="crumbThread">Topic</span></div>
+  <h1 id="threadTitle">Topic</h1>
+  <p class="thread-meta" id="threadMeta">Loading…</p>
+
+  <div id="posts">
+    <p class="t-faint">Loading the thread…</p>
+  </div>
+
+  <div class="card card--pad composer">
+    <h3 class="t-display" style="font-size:var(--text-lg);margin:0 0 var(--space-4)">Post a reply</h3>
+    <div id="signedOut" hidden>
+      <p class="t-muted" style="font-size:var(--text-sm);margin:0 0 var(--space-3)">You need an account to reply. Readers will see your handle, the database will see your account.</p>
+      <button class="btn btn--primary" id="signInPrompt">Sign in or create an account</button>
+    </div>
+    <div id="signedIn" hidden>
+      <p class="error-line" id="formError" hidden></p>
+      <div class="row">
+        <div class="field" style="flex:0 1 240px"><label for="handle">Post as</label><input class="input" id="handle" maxlength="32" placeholder="your handle"></div>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-3)"><label for="body">Message</label><textarea class="input" id="body" maxlength="4000" placeholder="Keep it civil. Everyone can see this, and one person can see who you are."></textarea></div>
+      <div class="actions">
+        <button class="btn btn--primary" id="submit">Post reply</button>
+      </div>
+      <p class="warn-line">Deleting a reply removes its text for good. The title of a topic stays even if its first post is removed.</p>
+    </div>
+  </div>
+</main>
+
+<script src="pb-auth.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const threadId = params.get('t') || '';
+let auth = null;
+
+function fmt(value) {
+  if (!value) return '—';
+  const d = new Date(String(value).replace(' ', 'T'));
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
+    ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function initials(handle) {
+  const cleaned = String(handle).replace(/[^A-Za-z0-9]/g, '');
+  return (cleaned.slice(0, 2) || '??').toUpperCase();
+}
+
+function postNode(post) {
+  const wrap = document.createElement('div');
+  wrap.className = 'card post';
+
+  const who = document.createElement('div');
+  who.className = 'who';
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = initials(post.pseudonym);
+  const name = document.createElement('div');
+  name.className = 'name';
+  name.textContent = post.pseudonym;
+  const rank = document.createElement('div');
+  rank.className = 'rank';
+  rank.textContent = post.deleted ? 'post withdrawn' : 'handle, not a name';
+  who.appendChild(avatar);
+  who.appendChild(name);
+  who.appendChild(rank);
+
+  const said = document.createElement('div');
+  said.className = 'said';
+  const head = document.createElement('div');
+  head.className = 'head';
+  const num = document.createElement('span');
+  num.className = 't-num';
+  num.textContent = '#' + post.number;
+  const when = document.createElement('span');
+  when.textContent = fmt(post.created);
+  head.appendChild(num);
+  head.appendChild(when);
+  if (post.mine) {
+    const badge = document.createElement('span');
+    badge.className = 'badge badge--green';
+    badge.textContent = 'yours';
+    head.appendChild(badge);
+  }
+  const body = document.createElement('div');
+  body.className = post.deleted ? 'body gone' : 'body';
+  body.textContent = post.deleted ? 'This post was removed by its author.' : post.body;
+  said.appendChild(head);
+  said.appendChild(body);
+
+  if (post.mine) {
+    const foot = document.createElement('div');
+    foot.className = 'foot';
+    const del = document.createElement('button');
+    del.className = 'btn btn--danger btn--sm';
+    del.textContent = 'Delete this post';
+    del.addEventListener('click', async () => {
+      del.disabled = true;
+      try {
+        await PBAuth.api('/api/forum/post/' + encodeURIComponent(post.id) + '/delete', { method: 'POST' });
+        GL.toast('Post deleted');
+        load();
+      } catch (err) {
+        GL.toast('Could not delete: ' + err.message);
+        del.disabled = false;
+      }
+    });
+    foot.appendChild(del);
+    said.appendChild(foot);
+  }
+
+  wrap.appendChild(who);
+  wrap.appendChild(said);
+  return wrap;
+}
+
+async function load() {
+  const holder = document.getElementById('posts');
+  try {
+    const data = await PBAuth.api('/api/forum/thread/' + encodeURIComponent(threadId));
+    document.title = data.thread.title + ' — Forum';
+    document.getElementById('threadTitle').textContent = data.thread.title;
+    document.getElementById('crumbThread').textContent = data.thread.title;
+    const crumbCat = document.getElementById('crumbCat');
+    crumbCat.textContent = data.category.name;
+    crumbCat.href = 'category.html?c=' + encodeURIComponent(data.category.slug);
+    document.getElementById('threadMeta').textContent =
+      'Started by ' + data.thread.pseudonym + ' on ' + fmt(data.thread.created) +
+      ' — ' + data.posts.length + (data.posts.length === 1 ? ' post' : ' posts');
+
+    holder.innerHTML = '';
+    data.posts.forEach((p) => holder.appendChild(postNode(p)));
+  } catch (err) {
+    holder.innerHTML = '';
+    const p = document.createElement('p');
+    p.className = 't-faint';
+    p.textContent = 'Could not load this topic: ' + err.message;
+    holder.appendChild(p);
+  }
+}
+
+function renderAuthState() {
+  const user = PBAuth.user();
+  document.getElementById('signedOut').hidden = !!user;
+  document.getElementById('signedIn').hidden = !user;
+  if (user) document.getElementById('handle').value = PBAuth.handle();
+  load();
+}
+
+async function submitReply() {
+  const error = document.getElementById('formError');
+  const button = document.getElementById('submit');
+  error.hidden = true;
+  button.disabled = true;
+  try {
+    const handle = document.getElementById('handle').value.trim();
+    await PBAuth.api('/api/forum/post', {
+      method: 'POST',
+      body: {
+        thread: threadId,
+        pseudonym: handle,
+        body: document.getElementById('body').value,
+      },
+    });
+    PBAuth.setHandle(handle);
+    document.getElementById('body').value = '';
+    GL.toast('Reply posted');
+    load();
+  } catch (err) {
+    error.textContent = err.message;
+    error.hidden = false;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  auth = PBAuth.mountAuth(document.getElementById('authSlot'));
+  PBAuth.onChange(renderAuthState);
+  document.getElementById('signInPrompt').addEventListener('click', () => auth.open());
+  document.getElementById('submit').addEventListener('click', submitReply);
+  const user = PBAuth.user();
+  document.getElementById('signedOut').hidden = !!user;
+  document.getElementById('signedIn').hidden = !user;
+  if (user) document.getElementById('handle').value = PBAuth.handle();
+  load();
+});
+</script>
+
+</body>
+</html>

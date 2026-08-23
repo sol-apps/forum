@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Category — Forum</title>
+<meta name="description" content="Topics in one category of the forum.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💬%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="design-system/tokens.css">
+<link rel="stylesheet" href="design-system/components.css">
+<script src="design-system/components.js" defer></script>
+<style>
+/* Page-specific styling only — anything reusable belongs to the design system. */
+.stage { max-width: 940px; margin: 0 auto; padding: var(--space-6); }
+.stage h1 { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 var(--space-2); }
+.stage .lede { color: var(--text-muted); font-size: var(--text-base); margin: 0 0 var(--space-6); max-width: 62ch; }
+.crumbs { font-size: var(--text-sm); color: var(--text-faint); margin-bottom: var(--space-3); }
+.crumbs a { color: var(--text-muted); text-decoration: none; }
+.crumbs a:hover { color: var(--text); }
+.topic-title { font-family: var(--font-display); font-weight: 600; font-size: var(--text-base); color: var(--text); text-decoration: none; letter-spacing: -0.01em; }
+.topic-title:hover { color: var(--accent); }
+.topic-by { font-size: var(--text-xs); color: var(--text-faint); margin-top: 2px; }
+.lastpost { font-size: var(--text-sm); color: var(--text-muted); }
+.dtable td { vertical-align: top; }
+.dtable td.num, .dtable th.num { text-align: right; width: 90px; }
+.section-head { display: flex; align-items: baseline; gap: var(--space-3); margin: 0 0 var(--space-3); }
+.section-head h2 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+.board-card { overflow: hidden; }
+.board-card .dtable th:first-child, .board-card .dtable td:first-child { padding-left: var(--space-5); }
+.board-card .dtable th:last-child, .board-card .dtable td:last-child { padding-right: var(--space-5); }
+.board-card .dtable tbody tr:last-child td { border-bottom: 0; }
+.board-card .dtable td { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+.pager { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-top: 1px solid var(--border); font-size: var(--text-sm); color: var(--text-muted); }
+.composer { margin-top: var(--space-6); }
+.composer .row { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.composer .row .field { flex: 1 1 220px; }
+.composer textarea { min-height: 140px; resize: vertical; font-family: var(--font-body); }
+.composer .actions { display: flex; align-items: center; gap: var(--space-3); }
+.warn-line { font-size: var(--text-xs); color: var(--text-faint); margin: var(--space-3) 0 0; }
+.error-line { font-size: var(--text-sm); color: var(--danger); margin: 0 0 var(--space-3); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="./"><span class="brand-mark"></span><span>Forum</span></a>
+  <nav class="navtabs"><a href="./">Board index</a></nav>
+  <div style="margin-left:auto"></div>
+  <span id="authSlot"></span>
+  <button class="btn btn--ghost btn--icon" data-theme-toggle aria-label="Toggle theme">◐</button>
+</header>
+
+<main class="stage">
+  <div class="crumbs"><a href="./">Board index</a> » <span id="crumbName">Category</span></div>
+  <h1 id="catName">Category</h1>
+  <p class="lede" id="catBlurb"></p>
+
+  <div class="section-head">
+    <h2>Topics</h2>
+    <span class="t-faint" style="font-size:var(--text-xs)" id="topicCount">Loading…</span>
+  </div>
+  <div class="card board-card">
+    <table class="dtable">
+      <thead>
+        <tr><th>Topic</th><th class="num">Replies</th><th>Last post</th></tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="3" class="t-faint" style="padding:var(--space-5)">Loading topics…</td></tr>
+      </tbody>
+    </table>
+    <div class="pager" id="pager" hidden>
+      <button class="btn btn--secondary btn--sm" id="prev">Previous</button>
+      <span id="pageLabel" class="t-num"></span>
+      <button class="btn btn--secondary btn--sm" id="next">Next</button>
+    </div>
+  </div>
+
+  <div class="card card--pad composer">
+    <h3 class="t-display" style="font-size:var(--text-lg);margin:0 0 var(--space-4)">Post a new topic</h3>
+    <div id="signedOut" hidden>
+      <p class="t-muted" style="font-size:var(--text-sm);margin:0 0 var(--space-3)">You need an account to post. Readers will see your handle, the database will see your account.</p>
+      <button class="btn btn--primary" id="signInPrompt">Sign in or create an account</button>
+    </div>
+    <div id="signedIn" hidden>
+      <p class="error-line" id="formError" hidden></p>
+      <div class="row">
+        <div class="field"><label for="title">Topic title</label><input class="input" id="title" maxlength="120" placeholder="Say what it is about"></div>
+        <div class="field"><label for="handle">Post as</label><input class="input" id="handle" maxlength="32" placeholder="your handle"></div>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-3)"><label for="body">Message</label><textarea class="input" id="body" maxlength="4000" placeholder="No formatting, no signatures with animated flames. Just words."></textarea></div>
+      <div class="actions">
+        <button class="btn btn--primary" id="submit">Post topic</button>
+        <span class="t-faint" style="font-size:var(--text-xs)">You can delete your own posts afterwards.</span>
+      </div>
+      <p class="warn-line">Your handle is what other readers see. Your account is recorded against the post either way.</p>
+    </div>
+  </div>
+</main>
+
+<script src="pb-auth.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const slug = params.get('c') || '';
+let page = parseInt(params.get('page'), 10) || 1;
+let auth = null;
+
+function fmt(value) {
+  if (!value) return '—';
+  const d = new Date(String(value).replace(' ', 'T'));
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
+    ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function cell(text, className) {
+  const td = document.createElement('td');
+  if (className) td.className = className;
+  td.textContent = text;
+  return td;
+}
+
+async function load() {
+  const rows = document.getElementById('rows');
+  try {
+    const data = await PBAuth.api('/api/forum/category/' + encodeURIComponent(slug) + '?page=' + page);
+    document.title = data.category.name + ' — Forum';
+    document.getElementById('catName').textContent = data.category.name;
+    document.getElementById('crumbName').textContent = data.category.name;
+    document.getElementById('catBlurb').textContent = data.category.blurb || '';
+    document.getElementById('topicCount').textContent =
+      data.total === 1 ? '1 topic' : data.total + ' topics';
+
+    rows.innerHTML = '';
+    if (!data.threads.length) {
+      const tr = document.createElement('tr');
+      const td = cell('Nothing here yet. Be the first, and set the tone.');
+      td.colSpan = 3;
+      td.className = 't-faint';
+      td.style.padding = 'var(--space-5)';
+      tr.appendChild(td);
+      rows.appendChild(tr);
+    }
+    data.threads.forEach((t) => {
+      const tr = document.createElement('tr');
+      const first = document.createElement('td');
+      const link = document.createElement('a');
+      link.className = 'topic-title';
+      link.href = 'thread.html?t=' + encodeURIComponent(t.id);
+      link.textContent = t.title;
+      const by = document.createElement('div');
+      by.className = 'topic-by';
+      by.textContent = 'started by ' + t.pseudonym + ' — ' + fmt(t.created);
+      first.appendChild(link);
+      first.appendChild(by);
+      tr.appendChild(first);
+      tr.appendChild(cell(String(t.replies), 'num'));
+      const last = document.createElement('td');
+      last.className = 'lastpost';
+      last.textContent = 'by ' + t.last_post_by + ' — ' + fmt(t.last_post_at);
+      tr.appendChild(last);
+      rows.appendChild(tr);
+    });
+
+    const pager = document.getElementById('pager');
+    pager.hidden = data.pages <= 1;
+    document.getElementById('pageLabel').textContent = 'Page ' + data.page + ' of ' + data.pages;
+    document.getElementById('prev').disabled = data.page <= 1;
+    document.getElementById('next').disabled = data.page >= data.pages;
+  } catch (err) {
+    rows.innerHTML = '';
+    const tr = document.createElement('tr');
+    const td = cell('Could not load this category: ' + err.message);
+    td.colSpan = 3;
+    tr.appendChild(td);
+    rows.appendChild(tr);
+  }
+}
+
+function go(nextPage) {
+  page = nextPage;
+  const next = new URLSearchParams({ c: slug, page: String(page) });
+  history.replaceState(null, '', 'category.html?' + next.toString());
+  load();
+}
+
+function renderAuthState() {
+  const user = PBAuth.user();
+  document.getElementById('signedOut').hidden = !!user;
+  document.getElementById('signedIn').hidden = !user;
+  if (user) document.getElementById('handle').value = PBAuth.handle();
+}
+
+async function submitTopic() {
+  const error = document.getElementById('formError');
+  const button = document.getElementById('submit');
+  error.hidden = true;
+  button.disabled = true;
+  try {
+    const handle = document.getElementById('handle').value.trim();
+    const created = await PBAuth.api('/api/forum/thread', {
+      method: 'POST',
+      body: {
+        category: slug,
+        title: document.getElementById('title').value,
+        pseudonym: handle,
+        body: document.getElementById('body').value,
+      },
+    });
+    PBAuth.setHandle(handle);
+    location.href = 'thread.html?t=' + encodeURIComponent(created.id);
+  } catch (err) {
+    error.textContent = err.message;
+    error.hidden = false;
+    button.disabled = false;
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  auth = PBAuth.mountAuth(document.getElementById('authSlot'));
+  PBAuth.onChange(renderAuthState);
+  renderAuthState();
+  document.getElementById('signInPrompt').addEventListener('click', () => auth.open());
+  document.getElementById('submit').addEventListener('click', submitTopic);
+  document.getElementById('prev').addEventListener('click', () => go(page - 1));
+  document.getElementById('next').addEventListener('click', () => go(page + 1));
+  load();
+});
+</script>
+
+</body>
+</html>
