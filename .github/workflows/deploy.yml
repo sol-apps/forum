@@ -3,18 +3,24 @@ name: Deploy to solhann.net
 # Thin caller — the real pipeline lives once in sol-apps/workflows.
 # The repo name IS the slug IS the subdomain; nothing here is app-specific.
 #
-# This file is generated into a sol-forge repo and then travels to sol-apps
-# unchanged at promotion, so it runs under BOTH owners and must be inert under
-# one of them. The owner guard is what makes that safe: only sol-apps deploys.
-# sol-forge holds no deploy credential, so without the guard every forge push
-# would fail on missing secrets — noise that would train everyone to ignore red.
+# This file used to carry a `github.repository_owner == 'sol-apps'` guard, because
+# it was generated into sol-forge and travelled to sol-apps unchanged at promotion,
+# so it ran under both owners and had to be inert under one. There is one org now.
+# The guard is gone, and the guards that matter moved INTO the reusable workflow
+# where they are enforced once for every app rather than copied into every repo:
 #
-# KNOWN GITHUB BEHAVIOUR: a job-level `uses:` is resolved when the run is
-# created, BEFORE `if:` is evaluated — a skipped job still needs its called
-# workflow to be reachable. That is fine only because sol-apps/workflows is
-# public. If it is ever made private, every sol-forge push fails at run
-# creation with a workflow-not-found error, and this file has to change shape
-# (guard at the step level inside a local job) before that happens.
+#   environment: prod          deployments only from main; a branch run is refused
+#                              entry before its first step, so it never holds a
+#                              prod credential
+#   if !github.event.created   a template-generate writes main in one ref-creation
+#                              push; without this that fires a deploy for a repo
+#                              nobody has looked at yet
+#
+# KNOWN GITHUB BEHAVIOUR: a job-level `uses:` is resolved when the run is created,
+# BEFORE `if:` is evaluated — a skipped job still needs its called workflow to be
+# reachable. That is fine only because sol-apps/workflows is public. If it is ever
+# made private, this file has to change shape (guard at the step level inside a
+# local job) before that happens.
 
 on:
   push:
@@ -27,6 +33,5 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.repository_owner == 'sol-apps'
     uses: sol-apps/workflows/.github/workflows/deploy.yml@main
     secrets: inherit
