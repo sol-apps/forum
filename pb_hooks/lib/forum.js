@@ -12,7 +12,7 @@
 //      authenticated caller, and that caller's id is stored on the record.
 //
 // Pseudonymity here is social, not technical: an administrator reading the
-// database can attribute any post. The UI says so, and so does spec.json.
+// database can attribute any post. The UI says so.
 
 const MAX_BODY = 4000;
 const MAX_TITLE = 120;

@@ -5,8 +5,7 @@
  * Runtime is PocketBase 0.39's embedded Goja VM: no npm, no Node APIs, no async.
  *
  * Every route here is a read or write of this app's own collections. There are no
- * outbound calls, no scheduled jobs and no process access, which is what
- * spec.json claims and what CI checks.
+ * outbound calls, no scheduled jobs and no process access.
  *
  * Handlers run in isolated pooled VMs, so the shared logic lives in
  * pb_hooks/lib/forum.js and is pulled in inside each handler.
